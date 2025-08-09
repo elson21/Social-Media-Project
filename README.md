@@ -1,2 +1,4 @@
-# Social-Media-Project
-A simeple social media application to learn more about fullstack.
+# Social Media Platform
+
+A very basic social media platform for educational purpose  
+Uses SQLite, FastAPI

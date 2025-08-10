@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Sign Up Page </h1>
+{% if taken %}
+<div>Username {{ username }} already taken.</div>
+{% endif %}
+
+{% include "user_form.html" %}
+{% endblock %}

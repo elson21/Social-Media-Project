@@ -9,7 +9,33 @@ class UserPost(BaseModel):
 
 class Post(UserPost):
     user_id: int
+    num_likes: int|None
+    post_id: int
 
 
 class Posts(BaseModel):
     posts: List[Post]
+
+
+class PostId(BaseModel):
+    post_id: int
+
+
+class User(BaseModel):
+    username: str
+    password: str
+
+
+class UserHashed(BaseModel):
+    username: str
+    salt: str
+    hash_password: str
+
+
+class UserHashedIndex(UserHashed):
+    user_id: int
+
+
+class Like(BaseModel):
+    user_id: int
+    post_id: int

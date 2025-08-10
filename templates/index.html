@@ -1,45 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Social Media</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css">
-</head>
-
-<body>
-    <div class="columns">
-        <div class="column is-half  is-offset-one-quarter ">
-
-            <div class="card">
-                <header class="card-header">
-                    <p class="card-header-title">
-                        Simple Social Media
-                    </p>
-                </header>
-                
-                <div class="card-content">
-                    <form hx-post="/post" hx-trigger="submit" hx-target="#posts" hx-swap="innerHTML" hx-ext="json-enc">
-                        <label class="label">Post Title</label>
-                        <input type="text" name="post_title" class="input">
-                        <label class="label">Post</label>
-                        <input type="text" name="post_text" class="input">
-                        <input type="submit" class="button">
-                    </form>
-                </div>
-            </div>
-
-            <div id="posts" hx-trigger="load" hx-get="/posts" hx-swap="innerHTML">
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.6/dist/htmx.min.js"
-        integrity="sha384-Akqfrbj/HpNVo8k11SXBb6TlBWmXXlYQrCSqEWmyKJe+hDm3Z/B2WVG4smwBkRVm"
-        crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
-
-</body>
-
-</html>
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <header class="card-header">
+        <p class="card-header-title">
+            Simple Social Media
+            {% if not login %}
+            Log in to create a Post
+            {% endif %}
+        </p>
+    </header>
+    {% if login %}
+    {% include "add_post.html" %}
+    {% endif %}
+</div>
+<div id="posts" hx-trigger="load" hx-get="/posts" hx-swap="innerHTML">
+{% endblock %}

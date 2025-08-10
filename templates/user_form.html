@@ -1,0 +1,14 @@
+<form action=
+    {% if login %} "/login" 
+    {% else %} "/signup" 
+    {% endif %}
+    method="post" 
+    autocomplete="off">
+    <label for="username">Username</label>
+    <input type="text" name="username" class="input" autocomplete="username">
+
+    <label for="password">Password</label>
+    <input type="password" name="password" class="input" autocomplete="current-password">
+
+    <input type="submit" class="button">
+</form>

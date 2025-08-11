@@ -9,7 +9,16 @@ from passlib.hash import pbkdf2_sha256
 from typing import Annotated
 import jwt
 
-from database import get_post, insert_post, create_user, get_user, add_like, get_single_post
+from database import (
+            get_post,
+            insert_post,
+            create_user,
+            get_user,
+            add_like,
+            get_single_post,
+            check_like,
+            delete_like
+        )
 from models import Posts, Post, UserPost, User, UserHashed, Like, PostId
 
 app = FastAPI()
@@ -170,7 +179,12 @@ async def upload_like(
                     user_id: int=Depends(oauth_cookie),
                 ) -> HTMLResponse:
     like = Like(user_id=user_id, post_id=post_id.post_id)
-    add_like(connection, like)
+
+    if check_like(connection, like):
+        delete_like(connection, like)
+    else:
+        add_like(connection, like)
+
     context = get_single_post(connection, post_id.post_id, user_id).model_dump()
     context = {"post": context}
     context["login"] = True

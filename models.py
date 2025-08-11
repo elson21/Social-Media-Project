@@ -11,6 +11,7 @@ class Post(UserPost):
     user_id: int
     num_likes: int|None
     post_id: int
+    user_liked: int|None = None
 
 
 class Posts(BaseModel):

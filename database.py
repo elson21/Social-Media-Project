@@ -108,10 +108,11 @@ def get_single_post(
                 post_text,
                 p.user_id user_id,
                 num_likes,
-                p.post_id post_id
+                p.post_id post_id,
+                u.user_id user_liked
             FROM post_page p
             LEFT JOIN like_count l USING (post_id)
-            LEFT JOIN user_liked USING (post_id);
+            LEFT JOIN user_liked u USING (post_id);
             """,
             {
                 "post_id": post_id,
@@ -192,11 +193,43 @@ def add_like(connection: Connection, like: Like) -> None:
         cur.execute(
             """
             INSERT INTO likes (user_id, post_id)
-            VALUES ( :user_id, :post_id)
+            VALUES ( :user_id, :post_id);
             """,
             like.model_dump()
         )
 
+
+def check_like(
+                connection: Connection,
+                like: Like    
+            ) -> bool:
+    cur = connection.cursor()
+    cur.execute(
+        """
+        SELECT * FROM likes
+        WHERE user_id = :user_id
+        AND post_id = :post_id;
+        """,
+        like.model_dump()
+    )
+
+    return True if cur.fetchone() is not None else False
+
+
+def delete_like(
+                connection: Connection,
+                like: Like
+            ) -> None:
+    
+    cur = connection.cursor()
+    cur.execute(
+        """
+        DELETE FROM likes
+        WHERE user_id = :user_id
+        AND post_id = :post_id;
+        """,
+        like.model_dump()
+    )
 
 if __name__ == "__main__":    
     connection = sqlite3.connect("social.db")   # create connection with the db

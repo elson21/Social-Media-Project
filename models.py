@@ -7,11 +7,15 @@ class UserPost(BaseModel):
     post_text: str
 
 
-class Post(UserPost):
+class UserPostId(UserPost):
     user_id: int
+
+
+class Post(UserPost):
     num_likes: int|None
     post_id: int
     user_liked: int|None = None
+    number_comments: int|None
 
 
 class Posts(BaseModel):

@@ -17,9 +17,11 @@ from database import (
             add_like,
             get_single_post,
             check_like,
-            delete_like
+            delete_like,
+            add_comment,
+            get_comments
         )
-from models import Posts, Post, UserPost, User, UserHashed, Like, PostId
+from models import Post, UserPost, UserHashed, Like, PostId, UserPostId
 
 app = FastAPI()
 connection = Connection("social.db")
@@ -189,3 +191,85 @@ async def upload_like(
     context = {"post": context}
     context["login"] = True
     return templates.TemplateResponse(request, "./post.html", context=context)
+
+@app.get("/add_comment_form_{post_id}")
+async def add_comment_form(
+                        post_id: int,
+                        request: Request,
+                        user_id: int=Depends(oauth_cookie)
+                    ) -> HTMLResponse:
+    
+    context = get_single_post(connection, post_id, user_id).model_dump()
+    context = {"post": context}
+    context["comment_form"] = True
+    context["login"] = True
+
+    return templates.TemplateResponse(request, "./post.html", context=context)
+
+
+@app.post("/add_comment_{post_id}")
+async def add_comment_form(
+                        post_id: int,
+                        request: Request,
+                        post: UserPost,
+                        user_id: int=Depends(oauth_cookie)
+                    ) -> HTMLResponse:
+    
+    post = UserPostId(user_id=user_id, **post.model_dump())
+    comment_id = insert_post(connection, post)
+    add_comment(connection, comment_id, post_id)
+
+    context = get_single_post(connection, post_id, user_id).model_dump()
+    context = {"post": context}
+    context["comment_form"] = False
+    context["login"] = True
+
+    return templates.TemplateResponse(request, "./post.html", context=context)
+
+
+def get_comment_thread_helper(
+                            access_token: str|None,
+                            post_id: int,
+                            hide: bool=False
+                        ) -> dict:
+    user_id = None
+    context = {}
+
+    if access_token:
+        user_id = decrypt_access_token(access_token)["user_id"]
+        context["login"] = True
+
+    context["main_post"] =  {"posts": [get_single_post(connection, post_id, user_id).model_dump()]}
+    context["main_post"]["posts"][0]["hide_see_comments"] = not hide
+
+    if hide:
+        return context
+    
+    comments = get_comments(connection, post_id, user_id).model_dump()
+    context["comments"] = comments
+
+    return context
+
+
+@app.get("/get_thread{post_id}")
+async def get_thread(
+                    post_id: int,
+                    request: Request,
+                    access_token: Annotated[str|None, Cookie()]=None
+                ) -> HTMLResponse:
+    
+    context = get_comment_thread_helper(access_token, post_id)
+
+    return templates.TemplateResponse(request, "./comment_thread.html", context=context)
+
+
+@app.get("/hide_thread{post_id}")
+async def hide_thread(
+                    post_id: int,
+                    request: Request,
+                    access_token: Annotated[str|None, Cookie()]=None
+                ) -> HTMLResponse:
+    
+    context = get_comment_thread_helper(access_token, post_id, hide=True)
+
+    return templates.TemplateResponse(request, "./comment_thread.html", context=context)

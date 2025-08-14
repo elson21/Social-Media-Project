@@ -46,6 +46,11 @@ def get_post(
                 FROM likes
                 WHERE user_id = :user_id
                 AND post_id IN (SELECT post_id FROM post_page)
+            ),
+            num_comments AS (
+                SELECT post_for_id, COUNT(*) number_comments
+                FROM comments
+                GROUP BY 1
             )
             SELECT 
                 post_title,
@@ -53,12 +58,15 @@ def get_post(
                 p.user_id user_id,
                 num_likes,
                 p.post_id post_id,
-                u.user_id user_liked
+                u.user_id user_liked,
+                number_comments
             FROM post_page p
             LEFT JOIN like_count l
             USING (post_id)
             LEFT JOIN user_liked u
-            USING (post_id);
+            USING (post_id)
+            LEFT JOIN num_comments AS n
+            ON (p.post_id = n.post_for_id);
             """,
             {
                 "limit"  : limit,
@@ -73,9 +81,9 @@ def get_post(
 def get_single_post(
         connection: Connection,
         post_id: int,
-        user_id: int) -> Posts:
+        user_id: int|None) -> Post:
     """
-    Fetches all posts from the "posts" table
+    Fetches a post from the "posts" table
 
     Arguments:
        connection (COnnection): An active SQLite db connection
@@ -89,19 +97,24 @@ def get_single_post(
         cur.execute(
             """
             WITH post_page AS (
-            SELECT post_id, post_title, post_text, user_id
-            FROM posts
-            WHERE post_id = :post_id
+                SELECT post_id, post_title, post_text, user_id
+                FROM posts
+                WHERE post_id = :post_id
             ),
             like_count AS (
-            SELECT post_id, COUNT(*) num_likes
-            FROM likes
-            WHERE post_id = :post_id
+                SELECT DISTINCT post_id, COUNT(*) num_likes
+                FROM likes
+                WHERE post_id = :post_id
             ),
             user_liked AS (
-                SELECT post_id, user_id
+                SELECT post_id, user_id user_liked
                 FROM likes
                 WHERE user_id = :user_id AND post_id = :post_id
+            ),
+            num_comments AS (
+                SELECT DISTINCT post_for_id, COUNT(*) number_comments
+                FROM comments
+                WHERE post_for_id = :post_id
             )
             SELECT 
                 post_title,
@@ -109,10 +122,12 @@ def get_single_post(
                 p.user_id user_id,
                 num_likes,
                 p.post_id post_id,
-                u.user_id user_liked
+                user_liked,
+                number_comments
             FROM post_page p
             LEFT JOIN like_count l USING (post_id)
-            LEFT JOIN user_liked u USING (post_id);
+            LEFT JOIN user_liked u USING (post_id)
+            LEFT JOIN num_comments c ON (p.post_id = c.post_for_id );
             """,
             {
                 "post_id": post_id,
@@ -144,6 +159,8 @@ def insert_post(connection: Connection, post: Post) -> None:
             """,
             post.model_dump()
         )
+
+    return cur.lastrowid
 
 
 def create_user(connection: Connection, user: UserHashed) -> bool:
@@ -197,6 +214,79 @@ def add_like(connection: Connection, like: Like) -> None:
             """,
             like.model_dump()
         )
+
+
+def add_comment(
+                connection: Connection,
+                post_id: int,
+                post_for_id: int
+            ) -> None:
+    
+    with connection:
+        cur = connection.cursor()
+        cur.execute("INSERT INTO comments (post_id, post_for_id) VALUES (?, ?)",
+                    (post_id, post_for_id)
+                )
+        
+
+def get_comments(
+                connection: Connection,
+                post_id: int,
+                user_id: int|None
+            ) -> Posts:
+
+    with connection:
+        cur = connection.cursor()
+        cur.execute(
+            """
+            WITH get_comments AS(
+                SELECT post_id, post_for_id
+                FROM comments
+                WHERE post_for_id = :post_id
+            ),
+            post_page AS (
+                SELECT post_id, post_title, post_text, user_id
+                FROM posts
+                WHERE post_id IN (SELECT post_id FROM get_comments)
+            ),
+            like_count AS (
+                SELECT DISTINCT post_id, COUNT(*) num_likes
+                FROM likes
+                WHERE post_id IN (SELECT post_id FROM get_comments)
+                GROUP BY 1
+            ),
+            user_liked AS (
+                SELECT post_id, user_id
+                FROM likes
+                WHERE user_id = :user_id
+                AND post_id = (SELECT post_id FROM get_comments)
+            ),
+            num_comments AS (
+                SELECT DISTINCT post_for_id, COUNT(*) number_comments
+                FROM comments
+                WHERE post_for_id IN (SELECT post_id FROM get_comments)
+            )
+            SELECT 
+                post_title,
+                post_text,
+                p.user_id user_id,
+                num_likes,
+                p.post_id post_id,
+                u.user_id user_liked,
+                number_comments
+            FROM post_page p
+            LEFT JOIN like_count l USING (post_id)
+            LEFT JOIN user_liked u USING (post_id)
+            LEFT JOIN num_comments c ON (p.post_id = c.post_for_id);
+            """,
+            {
+                "post_id": post_id,
+                "user_id": user_id
+            }
+        )
+
+        return Posts(posts=[Post.model_validate(dict(post)) for post in cur])
+        
 
 
 def check_like(

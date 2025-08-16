@@ -1,9 +1,20 @@
 <div class="card" id="post_card_{{post.post_id}}">
-    <header class="card-header">
+    {% if post.post_image %}
+        <div class="card-image">
+            <figure class="image is-8by3">
+                <img
+                src="/static/images/{{ post.post_image }}"
+                />
+            </figure>
+        </div>
+    {% endif %}
+
+    <header class="card-header">    
         <h3>
             {{ post.post_title }}
         </h3>
     </header>
+
     <div class="card-content">
         <p>
             {{ post.post_text }}

@@ -5,10 +5,12 @@ from typing import List
 class UserPost(BaseModel):
     post_title: str
     post_text: str
+    post_image: str|None
 
 
 class UserPostId(UserPost):
     user_id: int
+    post_image: str|None = None
 
 
 class Post(UserPost):

@@ -1,12 +1,15 @@
-from fastapi import FastAPI, Form, status, Depends, Cookie
+from fastapi import FastAPI, Form, status, Depends, Cookie, File, UploadFile
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.requests import Request
 from fastapi.security import OAuth2
+from fastapi.staticfiles import StaticFiles
 from sqlite3 import Connection, Row
 from secrets import token_hex
 from passlib.hash import pbkdf2_sha256
 from typing import Annotated
+from uuid import uuid4
+from pathlib import Path
 import jwt
 
 from database import (
@@ -24,6 +27,7 @@ from database import (
 from models import Post, UserPost, UserHashed, Like, PostId, UserPostId
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), "static")
 connection = Connection("social.db")
 connection.row_factory = Row
 
@@ -82,8 +86,27 @@ async def posts(
 
 
 @app.post("/post")
-async def add_post(post: UserPost, request: Request, user_id: int=Depends(oauth_cookie)) -> HTMLResponse:
-    post = Post(user_id=user_id, **post.model_dump())
+async def add_post(post_title: Annotated[str, Form()],
+                   post_text: Annotated[str, Form()],
+                   request: Request,
+                   post_image: UploadFile|None = File(None),
+                   user_id: int=Depends(oauth_cookie)
+                ) -> HTMLResponse:
+    
+    image_path = None
+
+    if post_image is not None:
+        image_path = Path("./static/images") / uuid4().hex
+        image_data = await post_image.read()
+        image_path.write_bytes(image_data)
+        image_path = image_path.name
+
+    post = UserPostId(
+                    user_id=user_id,
+                    post_title=post_title,
+                    post_text=post_text,
+                    post_image=image_path
+                )
     insert_post(connection, post)
     context = {"post_added": True}
 

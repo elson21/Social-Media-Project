@@ -30,7 +30,8 @@ def get_post(
                     post_id,
                     post_title,
                     post_text,
-                    user_id
+                    user_id,
+                    post_image
                 FROM posts
                 LIMIT :limit
                 OFFSET :offset
@@ -56,6 +57,7 @@ def get_post(
                 post_title,
                 post_text,
                 p.user_id user_id,
+                post_image,
                 num_likes,
                 p.post_id post_id,
                 u.user_id user_liked,
@@ -97,7 +99,12 @@ def get_single_post(
         cur.execute(
             """
             WITH post_page AS (
-                SELECT post_id, post_title, post_text, user_id
+                SELECT 
+                    post_id,
+                    post_title,
+                    post_text,
+                    user_id,
+                    post_image
                 FROM posts
                 WHERE post_id = :post_id
             ),
@@ -120,6 +127,7 @@ def get_single_post(
                 post_title,
                 post_text,
                 p.user_id user_id,
+                post_image,
                 num_likes,
                 p.post_id post_id,
                 user_liked,
@@ -153,9 +161,9 @@ def insert_post(connection: Connection, post: Post) -> None:
         # execute commands (queries)
         cur.execute(
             """
-            INSERT INTO posts (post_title, post_text, user_id)
+            INSERT INTO posts (post_title, post_text, user_id, post_image)
             VALUES
-            ( :post_title, :post_text, :user_id)
+            ( :post_title, :post_text, :user_id, :post_image)
             """,
             post.model_dump()
         )
@@ -245,7 +253,12 @@ def get_comments(
                 WHERE post_for_id = :post_id
             ),
             post_page AS (
-                SELECT post_id, post_title, post_text, user_id
+                SELECT 
+                    post_id,
+                    post_title,
+                    post_text,
+                    user_id,
+                    post_image
                 FROM posts
                 WHERE post_id IN (SELECT post_id FROM get_comments)
             ),
@@ -259,7 +272,7 @@ def get_comments(
                 SELECT post_id, user_id
                 FROM likes
                 WHERE user_id = :user_id
-                AND post_id = (SELECT post_id FROM get_comments)
+                AND post_id IN (SELECT post_id FROM get_comments)
             ),
             num_comments AS (
                 SELECT DISTINCT post_for_id, COUNT(*) number_comments
@@ -270,6 +283,7 @@ def get_comments(
                 post_title,
                 post_text,
                 p.user_id user_id,
+                post_image,
                 num_likes,
                 p.post_id post_id,
                 u.user_id user_liked,
